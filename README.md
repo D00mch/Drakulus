@@ -2,15 +2,22 @@
 
 Start repl with `lein repl`.
 
-    (def random-graph (make-graph 10 10))
-    (shortest-path random-graph (first (keys random-graph)) (last (keys random-graph))
-    ; => list of nodes which is the shortest path
+```clojure
+(def random-graph (make-graph 10 20))
 
-    (eccentricity random-graph (first (keys random-graph)))
-    ; => number expressing eccentricity for `first` vertex in random-graph
+(shortest-path random-graph (first (keys random-graph))
+                            (last (keys random-graph)))
+; => list of nodes which is the shortest path
 
-    (radius random-graph) ; => minimal eccentricity
-    (diameter random-graph) ; => maximal eccentricity
+(eccentricity random-graph (first (keys random-graph)))
+; => number expressing eccentricity for `first` vertex in random-graph
+
+(radius random-graph) ; => minimal eccentricity
+(diameter random-graph) ; => maximal eccentricity
+
+(radius random-graph ecc-distance—weight-fn) 
+; => maximal eccentricity with weight calculated by distance
+```
 
 ## Assumptions:
 
@@ -23,6 +30,11 @@ Start repl with `lein repl`.
 2. `Weight <= Integer/MAX_VALUE`, or we could have long overflows. It could be
 fixed by using operators that supports big integers (like `+'`, `inc'`, etc). 
 
+3. No OOM protection is needed. OOM will be possible for graphs with more than 5k
+vertices (for `Xmx` = 4096mb). Graph is optimized for no more than 512 nodes.
+
+4. There is only one path from one vertex to another.
+
 ## Abbreviations
 
 - G, g — graph;
@@ -32,6 +44,8 @@ fixed by using operators that supports big integers (like `+'`, `inc'`, etc).
 - adj — adjacent, adjacency.
 
 ## Graph representation:
+
+Taking into account the `assumptions` above, graph is represented as: 
 
 ```clojure
 {:1 {:2 10, :3 15}
@@ -82,3 +96,6 @@ graphs](https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm#cite_note-felner-9)
 1. Extend the graph definition to include a weight between graph edges` 
 ```
 It should be `between graph vertices`
+
+2. Don't know for sure whether I should implementat dfs/bfs for my graph 
+representation.
