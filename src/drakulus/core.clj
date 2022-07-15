@@ -1,57 +1,116 @@
 (ns drakulus.core
-  (:gen-class))
+  (:require
+    [clojure.data.priority-map :refer [priority-map-by]]))
 
-(comment
-  "
-  # Assumptions:
+(defn dijkstra 
+  "Usage: (dijkstra {:1 {:2 10} :2 {}} :1 :2)  
+  returns map: vertex-> [distance path]" 
+  [g v-start & [v-dest]]
+  (loop [queue (priority-map-by #(compare (first %1) (first %2)) 
+                                v-start 
+                                [0 [v-start]]) ; vertex -> [distance path]
+         result {}]                            ; same, but visited
+    (if-let [[curr-v [dist path]] (peek queue)]
+      (if (contains? result v-dest)
+        result
+        (recur 
+          (into (pop queue)                          ; removing curr-v 
+                (for [[adj-v w] (get g curr-v)       ; check neighbours
+                      :when (not (get result adj-v)) ; ignore visited
+                      :let [[dist-old :as old] (get queue adj-v)]]
+                  (if (and dist-old (< dist-old (+ w dist)))
+                    [adj-v old] 
+                    [adj-v [(+ w dist) (conj path adj-v)]])))
+          (assoc result curr-v (get queue curr-v))))
+      result)))
 
-  1. Graph doesn't have to be strongly connected because of this text from the task: 
-  `=> ... or no path if one does not exist.`
-  2. Weight are <= Integer/MAX_VALUE, or we could have long overflows. 
+(defn shortest-path [g v-start v-dest]
+  (if-let [result (get (dijkstra g v-start v-dest) v-dest)]
+    (second result)
+    []))
 
+(defn add-edge-with-rand [G verticies max-weight]
+  (assoc-in G verticies (rand-int max-weight)))
 
-  # Abbreviations
+(defn n->key [n] (keyword (str n)))
 
-  G, g — graph
-  e — edges
-  v — verticies
-  w — weight
-  adj — adjecent, adjecency
+(defn rand-v [v-count]
+  (n->key (rand-int v-count)))
 
+(defn empty-graph [v-count]
+  (into {} (for [i (range v-count)] [(keyword (str i)) {}])))
 
-  # Graph representation:
+(defn make-spanning-tree [v-count max-weight]
+  (loop [curr-v (rand-v v-count) 
+         visited #{curr-v} 
+         g (empty-graph v-count)]
+    (if (= (count visited) v-count)
+      g
+      (let [adj-v (rand-v v-count)]
+        (if (visited adj-v)
+          (recur adj-v visited g) 
+          (recur adj-v
+                 (conj visited adj-v)
+                 (add-edge-with-rand g [curr-v adj-v] max-weight)))))))
 
-  {:1 {:2 10, :3 15}
-   :2 {:3 12}}
+(defn lazy-shuffle 
+  "Get vector, return lazy shuffled sequence; O(n)"
+  [v]
+  (lazy-seq
+    (when (seq v)
+      (let [idx (rand-int (count v))]
+        (cons (nth v idx)
+              (lazy-shuffle (pop (assoc v idx (peek v)))))))))
 
-  Meaning there is an edge from 1 to 2 with cost 10, 1->3 with cost 15, 2->3 — 12. 
-  Represent it this way to have O(1) effectively for cases like this:  
-  (contains (:1 G) :2) => true
+(defn edges-seq [v-count]
+  (for [i (range v-count)
+        j (range v-count)
+        :when (not= i j)]
+    [(n->key i) (n->key j)]))
 
+(defn random-edges-seq [v-count]
+  (lazy-shuffle 
+    (vec (edges-seq v-count))))
 
-  # Generation appoach:
+(defn- add-edges-with-rand [g max-value edges]
+  (reduce (fn [g vs] (add-edge-with-rand g vs max-value)) g edges))
 
-  1 step — Generate a spanning tree 
-  Paper: https://www.cs.cmu.edu/~15859n/RelatedWork/Broder-GenRanSpanningTrees.pdf
-  Expected time: O(n log n); worst case: O(n^3), where n = count of verticies;
+(defn make-graph 
+  "v — number of verticies
+   e — number of directed edges, sparseness"
+  [v e & {:keys [max-value] :or {max-value 100}}]
 
-  2 step — add random edges
-  O(n^2); O(n) in best case.
+  (assert (<= (dec v) e (* v (dec v)))
+          "count of edges must be in range [v-1..v*(v-1)]; v = verticies count")
 
-  # Dijkstra approach
+  (if (= (* (dec v) v) e)
+    (add-edges-with-rand {} max-value (edges-seq v))
+    (let [g (make-spanning-tree v max-value)
+          e (- e (dec v))] ;; v - 1 edges in the spanning tree
+      (->> (random-edges-seq v)
+           (filter (fn [[v1 v2]] (not (get-in g [v1 v2]))))
+           (take e)
+           (add-edges-with-rand g max-value)))))
 
-  Using an optimized implementation without inifinities in the initial queue.
+(comment 
 
-  notes: 
-  1. Random weights are generated in place for performance reason. 
-  Don't want to overingeneer as it's not going to be supported in the future :)
+  (make-spanning-tree 5 5)
+  (def a (make-graph 111 5055))
 
-  2. You have a typo in
-  `1. Extend the graph definition to include a weight between graph edges`. 
-  It should be `verticies`
-  ")
+  (dijkstra a :0 :v-dest :25)
 
-(defn -main
-  "I don't do a whole lot ... yet."
-  [& args]
-  (println "Hello, World!"))
+  (def G
+    {:1 {:2 5 :6 1}
+     :2 {:4 16}
+     :3 {:5 5}
+     :4 {:1 15}
+     :5 {}
+     :6 {:5 1}})
+  
+  (def random-graph (make-graph 10 10))
+
+  (shortest-path random-graph (first (keys random-graph)) (last (keys random-graph)))
+
+  (time
+   (shortest-path a :0 :110))
+  ,)
