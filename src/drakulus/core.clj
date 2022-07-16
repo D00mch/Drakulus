@@ -12,6 +12,8 @@
   with weights on edges equal to 5 and 6 respectively."
   {:author "Artur Dumchev"}
   (:require
+    [dorothy.core :as d]
+    [dorothy.jvm :refer [show!]]
     [clojure.core.memoize :as memo]
     [clojure.data.priority-map :refer [priority-map-by]]))
 
@@ -154,6 +156,20 @@
   ([g] (diameter g ecc-count-edges-weight-fn))
   ([g weight-fn] (eccentricities-by g weight-fn max)))
 
+;; # Visualization
+
+(defn dorothy-digraph [g]
+  (d/digraph (for [[v es] g
+                   [v2 w] es]
+               [v v2 {:weight w}])))
+
+(defn show-graph!
+  "graphviz needs to be installed on the system path"
+  [g]
+  (-> (dorothy-digraph g)
+      d/dot
+      (show! {:format :svg})))
+
 (comment
 
   (make-spanning-tree 5 5)
@@ -167,6 +183,9 @@
   (radius G)
   (diameter G)
   (eccentricity G :3 ecc-distance—weight-fn)
+
+  (show-graph! G)
+  (show-graph! (make-graph 9 11))
 
   (time
     (shortest-path G :1 :999))
