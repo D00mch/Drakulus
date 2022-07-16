@@ -8,15 +8,14 @@
    :3 {:1 5}
    :4 {}}
 
-  In the example above vertex :1 has two adjacent vertices — :2 and :3 
+  In the example above vertex :1 has two adjacent vertices — :2 and :3
   with weights on edges equal to 5 and 6 respectively."
   {:author "Artur Dumchev"}
   (:require
     [clojure.core.memoize :as memo]
     [clojure.data.priority-map :refer [priority-map-by]]))
 
-(defn- add-edge-with-rand [G verticies max-weight]
-  (assoc-in G verticies (rand-int max-weight)))
+;; # Random digraph, spanning tree generation
 
 (def ^:private n->key (comp keyword str))
 
@@ -24,19 +23,19 @@
   (into {} (for [i (range v-count)] [(n->key i) {}])))
 
 (defn- make-spanning-tree [v-count max-weight]
-  (loop [curr-v (n->key (rand-int v-count)) 
-         visited #{curr-v} 
+  (loop [curr-v (n->key (rand-int v-count))
+         visited #{curr-v}
          g (empty-graph v-count)]
     (if (= (count visited) v-count)
       g
       (let [adj-v (n->key (rand-int v-count))]
         (if (visited adj-v)
-          (recur adj-v visited g) 
+          (recur adj-v visited g)
           (recur adj-v
                  (conj visited adj-v)
-                 (add-edge-with-rand g [curr-v adj-v] max-weight)))))))
+                 (assoc-in g [curr-v adj-v] (rand-int max-weight))))))))
 
-(defn- lazy-shuffle 
+(defn- lazy-shuffle
   "Get vector, return lazy shuffled sequence; O(n)"
   [v]
   (lazy-seq
@@ -45,20 +44,20 @@
         (cons (nth v idx)
               (lazy-shuffle (pop (assoc v idx (peek v)))))))))
 
-(defn- all-edges-seq [v-count]
+(defn- all-edges-comb-seq [v-count]
   (for [i (range v-count)
         j (range v-count)
         :when (not= i j)]
     [(n->key i) (n->key j)]))
 
 (defn- random-edges-seq [v-count]
-  (lazy-shuffle 
-    (vec (all-edges-seq v-count))))
+  (lazy-shuffle
+    (vec (all-edges-comb-seq v-count))))
 
-(defn- add-edges-with-rand [g max-value edges]
-  (reduce (fn [g vs] (add-edge-with-rand g vs max-value)) g edges))
+(defn- add-rand-weighted-edges [g max-value edges]
+  (reduce (fn [g vs] (assoc-in g vs (rand-int max-value))) g edges))
 
-(defn make-graph 
+(defn make-graph
   "Args:
   `v` — number of verticies
   `e` — number of directed edges (in range [v-1..v*(v-1)])
@@ -68,42 +67,44 @@
   (assert (<= (dec v) e (* v (dec v)))
           "count of edges must be in range [v-1..v*(v-1)]")
   (if (= (* (dec v) v) e)
-    (add-edges-with-rand {} max-value (all-edges-seq v))
+    (add-rand-weighted-edges {} max-value (all-edges-comb-seq v))
     (let [g (make-spanning-tree v max-value)
           e (- e (dec v))] ;; v - 1 edges in the spanning tree
       (->> (random-edges-seq v)
            (filter (fn [[v1 v2]] (not (get-in g [v1 v2]))))
            (take e)
-           (add-edges-with-rand g max-value)))))
+           (add-rand-weighted-edges g max-value)))))
 
 (def ^:private compare-by-first #(compare (first %1) (first %2)))
+
+;; # Distance/Path
 
 (defn dijkstra
   "Args:
   `g` — graph,
   `v-start` — start vertex;
-  `v-dest` — optional; returns result immediatelly when finds `v-dest`. 
+  `v-dest` — optional; returns result immediatelly when finds `v-dest`.
 
-  Returns map: vertex —> [distance path], where 
+  Returns map of: vertex —> [distance path], where
   `distance` — sum of edges in between;
   `path` — verticies between v-start and other vertex, including both.
 
   Usage:
-  (dijkstra {:1 {:2 10} :2 {}} :1 :2) ;=> {:1 [0 [:1]], :2 [10 [:1 :2]]}" 
+  (dijkstra {:1 {:2 10} :2 {}} :1 :2) ;=> {:1 [0 [:1]], :2 [10 [:1 :2]]}"
   [g v-start & [v-dest]]
-  ;; both queue and result have mappings: vertex -> [distance path]
-  (loop [queue (priority-map-by compare-by-first v-start [0 [v-start]]) 
+  ;; both queue and result have map entries: vertex -> [distance path]
+  (loop [queue (priority-map-by compare-by-first v-start [0 [v-start]])
          result {}]
     (if (contains? result v-dest)
         result
         (if-let [[curr-v [dist path]] (peek queue)]
-          (recur 
-            (into (pop queue)                          ; removing curr-v 
+          (recur
+            (into (pop queue)                          ; removing curr-v
                   (for [[adj-v w] (get g curr-v)       ; check neighbours
                         :when (not (get result adj-v)) ; ignore visited
                         :let [[dist-old :as old] (get queue adj-v)]]
                     (if (and dist-old (< dist-old (+ w dist)))
-                      [adj-v old] 
+                      [adj-v old]
                       [adj-v [(+ w dist) (conj path adj-v)]])))
             (assoc result curr-v (get queue curr-v)))
           result))))
@@ -117,8 +118,8 @@
 (def ecc-distance—weight-fn first)
 
 (defn eccentricity
-  "Args: 
-  `g` — graph, 
+  "Args:
+  `g` — graph,
   `v` — vertex and weight-fn
   `weight-fn` takes `[total-distance, [:as path]]`, returns number or ##Inf
 
@@ -141,19 +142,19 @@
 (defn eccentricities-by [g weight-fn select-fn]
   (apply select-fn (for [[v _] g] (eccentricity-memo g v weight-fn))))
 
-(defn radius 
+(defn radius
   "Args: graph, weight-fn (check `eccentricity` function docs)
   Retruns min of all eccentricities"
   ([g] (radius g ecc-count-edges-weight-fn))
   ([g weight-fn] (eccentricities-by g weight-fn min)))
 
-(defn diameter 
+(defn diameter
   "Args: graph, weight-fn (check `eccentricity` function docs)
   Retruns max of all eccentricities"
   ([g] (diameter g ecc-count-edges-weight-fn))
   ([g weight-fn] (eccentricities-by g weight-fn max)))
 
-(comment 
+(comment
 
   (make-spanning-tree 5 5)
 
