@@ -21,17 +21,18 @@ Start repl with `lein repl`.
 
 ## Assumptions:
 
-1. Graph doesn't have to be strongly connected; based on test description: 
+1. Graph doesn't have to be strongly connected; based on the test description: 
 
 ```
 (shortest-path random-graph (first (keys random-graph)) (last (keys random-graph)) ; => list of nodes which is the shortest path by edge weight between the 2 nodes, or no path if one does not exist.
 ```
 
 2. `Weight <= Integer/MAX_VALUE`, or we could have long overflows. It could be
-fixed by using operators that supports big integers (like `+'`, `inc'`, etc). 
+fixed by using operators that support big integers (like `+'`, `inc'`, etc). 
 
 3. No OOM protection is needed. OOM will be possible for graphs with more than 5k
-vertices (for `Xmx` = 4096mb). Graph is optimized for no more than 512 nodes.
+vertices (for `Xmx` = 4096mb). Graph is optimized for no more than 512 nodes
+(check [eccentricities](https://github.com/Liverm0r/Drakulus#eccentricity-calculation-approach) for more details).
 
 4. There is only one path from one vertex to another.
 
@@ -49,13 +50,14 @@ Taking into account the `assumptions` above, graph is represented as:
 
 ```clojure
 {:1 {:2 10, :3 15}
- :2 {:3 12}}
+ :2 {:3 12}
+ :3 {}}
 ```
 
-Meaning there is an edge from 1 to 2 with cost 10, 1 -> 3 with cost 15, 2 -> 3 —
-12. 
+Meaning there is an edge from 1 to 2 with cost 10, from 1 to 3 with cost 15,
+from 2 to 3 with cost 12. 
 
-Using this model to query graph with `O(1)` effectively. Example:
+This representation allows to query graph with effectively `O(1)`. Example:
 
 `(contains (get G :1) :2) ; => true`
 
@@ -84,18 +86,26 @@ prescribed degree sequence](http://complexnetworks.fr/wp-content/uploads/2011/01
 
 ## Dijkstra implementation
 
-Using an optimized implementation without infinities in the initial queue.
+Using an optimized implementation without infinities in the initial queue, 
+having `O(E * Log V)`.
 
 [Practical optimizations and infinite
 graphs](https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm#cite_note-felner-9).
 
+## Eccentricity calculation approach
+
+Memoization is used with eccentricity function to avoid recalculations for 
+radius and diameter.
+
+Cache is a simple LRU with 512 threshold. Depending on the real use this could be
+tweaked.
+
 ## Notes: 
 
-1. You have a typo in test 
+#### You have a typo in test 
 ```
 1. Extend the graph definition to include a weight between graph edges` 
 ```
 It should be `between graph vertices`
 
-2. Don't know for sure whether I should implementat dfs/bfs for my graph 
-representation.
+#### Don't know for sure whether dfs/bfs should be supported.
