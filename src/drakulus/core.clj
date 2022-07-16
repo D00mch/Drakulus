@@ -156,6 +156,26 @@
   ([g] (diameter g ecc-count-edges-weight-fn))
   ([g weight-fn] (eccentricities-by g weight-fn max)))
 
+;; # DFS/BFS
+
+(defn- seq-graph [d g s]
+  ((fn rec-seq [explored frontier]
+     (lazy-seq
+       (if (empty? frontier)
+         nil
+         (let [v (peek frontier)
+               neighbors (keys (get g v))]
+           (cons v (rec-seq
+                     (into explored neighbors)
+                     (into (pop frontier) (remove explored neighbors))))))))
+   #{s} (conj d s)))
+
+(def ^{:doc "Args: graph, start vertex"} seq-graph-dfs
+  (partial seq-graph []))
+
+(def ^{:doc "Args: graph, start vertex"} seq-graph-bfs 
+  (partial seq-graph (clojure.lang.PersistentQueue/EMPTY)))
+
 ;; # Visualization
 
 (defn dorothy-digraph [g]
@@ -174,7 +194,10 @@
 
   (make-spanning-tree 5 5)
 
-  (def G (make-graph 8 9))
+  (def G (make-graph 8 17))
+
+  (seq-graph-dfs G :1)
+  (seq-graph-bfs G :1)
 
   (dijkstra G :1)
 

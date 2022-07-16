@@ -2,7 +2,8 @@
   (:require 
     [clojure.test :refer :all]
     [drakulus.core :as core :refer [dijkstra make-graph 
-                                    eccentricity radius diameter]]))
+                                    eccentricity radius diameter
+                                    seq-graph-bfs seq-graph-dfs]]))
 
 (defn map-values [m f]
   (zipmap (keys m) (map f (vals m))))
@@ -73,3 +74,13 @@
                repeatedly
                (take 30)
                (apply = ##Inf))))))
+
+(deftest traversal-test 
+  (let [g {:1 {:2 1 :3 1},
+            :2 {:4 1},
+            :3 {:4 1},
+            :4 {} }]
+    (testing "bfs"
+      (is (= '(:1 :2 :3 :4) (seq-graph-bfs g :1))))
+    (testing "dfs"
+      (is (= '(:1 :3 :4 :2) (seq-graph-dfs g :1))))))
