@@ -77,9 +77,9 @@
            (take e)
            (add-rand-weighted-edges g max-value)))))
 
-(def ^:private compare-by-first #(compare (first %1) (first %2)))
-
 ;; # Distance/Path
+
+(def ^:private compare-by-first #(compare (first %1) (first %2)))
 
 (defn dijkstra
   "Args:
@@ -116,8 +116,8 @@
     (second result)
     []))
 
-(def ecc-count-edges-weight-fn (comp dec count second))
-(def ecc-distance—weight-fn first)
+(def ecc-count-edges-dist-fn (comp dec count second))
+(def ecc-distance-dist-fn first)
 
 (defn eccentricity
   "Args:
@@ -130,9 +130,9 @@
 
   Usage:
   (eccentricity {:1 {:2 1}, :2 {}} :1) ;=> 1
-  (eccentricity {:1 {:2 7}, :2 {}} :1 ecc-distance—weight-fn) ;=> 7
-  (eccentricity {:1 {:2 1}, :2 {}} :1 ecc-count-edges-weight-fn) ;=> 1"
-  ([g v] (eccentricity g v ecc-count-edges-weight-fn))
+  (eccentricity {:1 {:2 7}, :2 {}} :1 ecc-count-edges-dist-fn) ;=> 7
+  (eccentricity {:1 {:2 1}, :2 {}} :1 ecc-distance-dist-fn) ;=> 1"
+  ([g v] (eccentricity g v ecc-count-edges-dist-fn))
   ([g v weight-fn]
    (let [distances (dissoc (dijkstra g v) v)]
      (if (empty? distances)
@@ -147,13 +147,13 @@
 (defn radius
   "Args: graph, weight-fn (check `eccentricity` function docs)
   Retruns min of all eccentricities"
-  ([g] (radius g ecc-count-edges-weight-fn))
+  ([g] (radius g ecc-count-edges-dist-fn))
   ([g weight-fn] (eccentricities-by g weight-fn min)))
 
 (defn diameter
   "Args: graph, weight-fn (check `eccentricity` function docs)
   Retruns max of all eccentricities"
-  ([g] (diameter g ecc-count-edges-weight-fn))
+  ([g] (diameter g ecc-count-edges-dist-fn))
   ([g weight-fn] (eccentricities-by g weight-fn max)))
 
 ;; # DFS/BFS
@@ -201,11 +201,11 @@
 
   (dijkstra G :1)
 
-  (eccentricities-by G ecc-count-edges-weight-fn vector)
+  (eccentricities-by G ecc-count-edges-dist-fn vector)
 
   (radius G)
   (diameter G)
-  (eccentricity G :3 ecc-distance—weight-fn)
+  (eccentricity G :3 ecc-distance-dist-fn)
 
   (show-graph! G)
   (show-graph! (make-graph 9 11))
