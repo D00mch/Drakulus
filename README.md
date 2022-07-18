@@ -30,12 +30,15 @@ Start repl with `lein repl`.
 2. `Weight <= Integer/MAX_VALUE`, or we could have long overflows. It could be
 fixed by using operators that support big integers (like `+'`, `inc'`, etc). 
 
-3. No OOM protection is needed. OOM will not be possible for graphs with less
+3. There is only one direct path from one vertex to another.
+
+4. Zero weight are possible, but not negative weights.
+
+5. No OOM protection is needed. OOM will not be possible for graphs with less
 than 6000 vertices and 6_000_000 edges (for `Xmx` = 2048mb). 
 
-4. There is only one direct path from one vertex to another.
-
-5. Zero weight are possible, but not negative weights.
+6. This is expected to be used only from the REPL. So assertions are good enough
+to handle illegal arguments.
 
 ## Abbreviations
 

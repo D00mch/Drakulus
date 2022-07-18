@@ -16,7 +16,13 @@
     [dorothy.jvm :refer [show!]]
     [clojure.core.memoize :as memo]
     [clojure.data.priority-map :refer [priority-map-by]]
+    [clojure.spec.alpha :as s]
     #_[criterium.core :refer [quick-bench benchmark]]))
+
+(s/def ::vertex keyword?)
+(s/def ::weight #(s/int-in-range? 0 Integer/MAX_VALUE %))
+(s/def ::edges (s/map-of ::vertex ::weight))
+(s/def ::graph (s/map-of ::vertex ::edges))
 
 ;; # Random digraph, spanning tree generation
 
@@ -69,8 +75,8 @@
   Returns a random graph"
   ([v e] (make-graph v e 100))
   ([v e max-w]
-   (assert (<= (dec v) e (* v (dec v)))
-           "edges count not in range [v-1,v*(v-1)]")
+   {:pre [(<= (dec v) e (* v (dec v)))
+          (<= 1 max-w Integer/MAX_VALUE)]}
    (if (= (* (dec v) v) e)
      (add-rand-weighted-edges {} max-w (all-edges-comb-seq v))
      (let [g (make-spanning-tree v max-w)
@@ -117,6 +123,11 @@
           result))))
 
 (defn shortest-path [g v-start v-dest]
+  {:pre [(s/valid? ::graph g) 
+         (s/valid? ::vertex v-start)
+         (s/valid? ::vertex v-dest)
+         (contains? g v-start)
+         (contains? g v-dest)]}
   (if-let [result (get (dijkstra g v-start v-dest) v-dest)]
     (second result)
     []))
@@ -139,6 +150,7 @@
   (eccentricity {:1 {:2 7}, :2 {}} :1 ecc-distance-fn) ;=> 7"
   ([g v] (eccentricity g v ecc-count-edges-dist-fn))
   ([g v dist-fn]
+   {:pre [(s/valid? ::graph g) (s/valid? ::vertex v)]}
    (if-let [distances (seq (dissoc (dijkstra g v) v))]
      (reduce (fn [^long _max d] (max _max (dist-fn (nth d 1)))) 0 distances)
      ##Inf)))
@@ -157,17 +169,23 @@
   "Args: graph, dist-fn (check `eccentricity` function docs)
   Retruns min of all eccentricities"
   ([g] (radius g ecc-count-edges-dist-fn))
-  ([g dist-fn] (eccentricities-by g dist-fn min)))
+  ([g dist-fn] 
+   {:pre [(s/valid? ::graph g)]}
+   (eccentricities-by g dist-fn min)))
 
 (defn diameter
   "Args: graph, dist-fn (check `eccentricity` function docs)
   Retruns max of all eccentricities"
   ([g] (diameter g ecc-count-edges-dist-fn))
-  ([g dist-fn] (eccentricities-by g dist-fn max)))
+  ([g dist-fn] 
+   {:pre [(s/valid? ::graph g)]}
+   (eccentricities-by g dist-fn max)))
 
 ;; # DFS/BFS
 
 (defn- seq-graph [d g s]
+  {:pre [(s/valid? ::graph g)
+         (s/valid? ::vertex s)]}
   ((fn rec-seq [explored frontier]
      (lazy-seq
        (if (empty? frontier)
