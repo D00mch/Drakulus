@@ -2,7 +2,7 @@
   (:require 
     [clojure.test :refer :all]
     [drakulus.core :as core :refer [dijkstra make-graph 
-                                    eccentricity radius diameter
+                                    radius diameter
                                     seq-graph-bfs seq-graph-dfs]]))
 
 (defn map-values [m f]
@@ -53,14 +53,14 @@
              :5 {:1 1}}]
       (is (= (radius g) 3))
       (is (= (diameter g) 4))
-      (is (= (radius g core/ecc-distance-dist-fn) 10))
-      (is (= (diameter g core/ecc-distance-dist-fn) 19))))
+      (is (= (radius g core/ecc-distance-fn) 10))
+      (is (= (diameter g core/ecc-distance-fn) 19))))
   (testing "eccentricity on weakly connected graph"
     (let [g {:1 {:2 2} :2 {}}]
       (is (= (radius g) 1))
       (is (= (diameter g) ##Inf))
-      (is (= (radius g core/ecc-distance-dist-fn) 2))
-      (is (= (diameter g core/ecc-distance-dist-fn) ##Inf)))))
+      (is (= (radius g core/ecc-distance-fn) 2))
+      (is (= (diameter g core/ecc-distance-fn) ##Inf)))))
 
 (defn calc-rand-graph-radius [min-val max-val]
   (let [v (+ min-val (rand-int (- max-val min-val)))

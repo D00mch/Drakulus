@@ -15,7 +15,7 @@ Start repl with `lein repl`.
 (radius random-graph) ; => minimal eccentricity
 (diameter random-graph) ; => maximal eccentricity
 
-(radius random-graph ecc-distance—weight-fn) 
+(radius random-graph ecc-distance-fn) 
 ; => maximal eccentricity with weight calculated by distance
 ```
 
@@ -30,11 +30,12 @@ Start repl with `lein repl`.
 2. `Weight <= Integer/MAX_VALUE`, or we could have long overflows. It could be
 fixed by using operators that support big integers (like `+'`, `inc'`, etc). 
 
-3. No OOM protection is needed. OOM will be possible for graphs with more than 5k
-vertices (for `Xmx` = 4096mb). Graph is optimized for no more than 512 nodes
-(check [eccentricities](https://github.com/Liverm0r/Drakulus#eccentricity-calculation-approach) for more details).
+3. No OOM protection is needed. OOM will not be possible for graphs with less
+than 6000 vertices and 6_000_000 edges (for `Xmx` = 2048mb). 
 
-4. There is only one path from one vertex to another.
+4. There is only one direct path from one vertex to another.
+
+5. Zero weight are possible, but not negative weights.
 
 ## Abbreviations
 
@@ -94,11 +95,17 @@ graphs](https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm#cite_note-felner-9)
 
 ## Eccentricity calculation approach
 
-Memoization is used with eccentricity function to avoid recalculations for 
-radius and diameter.
+Eccentricity is based on distance functions. There are two of them:
 
-Cache is a simple LRU with 512 threshold. Depending on the real use this could be
-tweaked.
+- `ecc-count-edges-dist-fn` — count of edges.
+- `ecc-distance-dist-fn` — sum of edges weights.
+
+Memoization is used with `eccentricities-memo` function to avoid recalculations
+for radius and diameter when working with one graph. 
+
+Cache contains 2 slots, because we have now only 2 weight/distance calculation
+functions. So function may be invoked with two different combinations for one
+graph.
 
 ## Notes: 
 
